@@ -1,0 +1,163 @@
+---
+title: "R Notebook"
+output: 
+---
+# This is the R-code of data Visualization and Recommendation System.
+## load data in your path
+
+```{r}
+library(tidyverse)
+
+stocks_data <- read_csv("/Users/ryanchris/Documents/uic/uic_material/semester 6/BDA/group assignment/r/sp500_top100_stock_results.csv")
+
+
+ggplot(stocks_data, aes(x = `Max Profit`)) +
+  geom_histogram(binwidth = 10, fill = "blue", color = "black") +
+  labs(title = "Histogram of Max Profit", x = "Max Profit ($)", y = "Count")
+```
+```{r}
+ggplot(stocks_data, aes(x = `Max Profit`)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Density Plot of Max Profit", x = "Max Profit ($)", y = "Density")
+```
+```{r}
+ggplot(stocks_data, aes(x = `Average Price`)) +
+  geom_histogram(binwidth = 10, fill = "red", color = "black") +
+  labs(title = "Histogram of Average Price", x = "Average Price ($)", y = "Count")
+```
+
+
+```{r}
+ggplot(stocks_data, aes(x = `Average Price`)) +
+  geom_density(fill = "red", alpha = 0.5) +
+  labs(title = "Density Plot of Average Price", x = "Average Price ($)", y = "Density")
+```
+```{r}
+ggplot(stocks_data, aes(x = `Sharpe Ratio`)) +
+  geom_histogram(binwidth = 0.5, fill = "green", color = "black") +
+  labs(title = "Histogram of Sharpe Ratio", x = "Sharpe Ratio", y = "Count")
+
+```
+```{r}
+ggplot(stocks_data, aes(x = `Sharpe Ratio`)) +
+  geom_density(fill = "green", alpha = 0.5) +
+  labs(title = "Density Plot of Sharpe Ratio", x = "Sharpe Ratio ($)", y = "Density")
+```
+
+
+```{r}
+ggplot(stocks_data, aes(x = `Average Price`, y = `Max Profit`)) +
+  geom_point(aes(color = `Sharpe Ratio`), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  scale_color_viridis_c() +
+  labs(title = "Scatter Plot of Max Profit vs Average Price", x = "Average Price ($)", y = "Max Profit ($)")
+
+```
+```{r}
+ggplot(stocks_data, aes(x = `Sharpe Ratio`, y = `Max Profit`)) +
+  geom_point(aes(color = `Average Price`), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  scale_color_viridis_c() +
+  labs(title = "Scatter Plot of Max Profit vs Sharpe Ratio", x = "Sharpe Ratio", y = "Max Profit ($)")
+
+```
+```{r}
+ggplot(stocks_data, aes(x = `Average Price`, y = `Sharpe Ratio`)) +
+  geom_point(aes(color = `Max Profit`), alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  scale_color_viridis_c() +
+  labs(title = "Scatter Plot of Average Price vs Sharpe Ratio", x = "Average Price ($)", y = "Sharpe Ratio ($)")
+```
+
+
+```{r}
+library(plotly)
+
+plot_ly(data = stocks_data, x = ~`Average Price`, y = ~`Max Profit`, z = ~`Sharpe Ratio`,
+        type = 'scatter3d', mode = 'markers',
+        marker = list(size = 5, color = stocks_data$`Sharpe Ratio`, colorscale = 'Viridis', opacity = 0.8)) %>%
+  layout(title = "3D Scatter Plot of Stock Data",
+         scene = list(xaxis = list(title = 'Average Price'),
+                      yaxis = list(title = 'Max Profit'),
+                      zaxis = list(title = 'Sharpe Ratio')))
+
+```
+```{r}
+library(GGally)
+ggpairs(stocks_data[, c("Max Profit", "Average Price", "Sharpe Ratio")])
+
+```
+
+## Clusting algorithm 
+```{r}
+
+library(plotly)
+library(cluster)
+library(factoextra)
+
+str(stocks_data)
+
+
+set.seed(123)
+kmeans_result <- kmeans(stocks_data[, c('Max Profit', 'Average Price', 'Sharpe Ratio')], centers = 3, nstart = 25)
+stocks_data$kmeans_cluster <- as.factor(kmeans_result$cluster)
+
+
+d <- dist(stocks_data[, c('Max Profit', 'Average Price', 'Sharpe Ratio')], method = "euclidean")
+hclust_result <- hclust(d, method = "ward.D2")
+cutree_result <- cutree(hclust_result, k = 3)
+stocks_data$hclust_cluster <- as.factor(cutree_result)
+
+
+silhouette_kmeans <- silhouette(kmeans_result$cluster, d)
+silhouette_hclust <- silhouette(cutree_result, d)
+avg_silhouette_kmeans <- mean(silhouette_kmeans[, 3])
+avg_silhouette_hclust <- mean(silhouette_hclust[, 3])
+
+
+
+plot_ly(data = stocks_data, x = ~`Average Price`, y = ~`Max Profit`, z = ~`Sharpe Ratio`,
+        type = 'scatter3d', mode = 'markers',
+        color = ~kmeans_cluster,
+        marker = list(size = 5, colorscale = 'Viridis', opacity = 0.8)) %>%
+  layout(title = "3D Scatter Plot of Stock Data with k-means Clusters",
+         scene = list(xaxis = list(title = 'Average Price'),
+                      yaxis = list(title = 'Max Profit'),
+                      zaxis = list(title = 'Sharpe Ratio')))
+
+
+plot_ly(data = stocks_data, x = ~`Average Price`, y = ~`Max Profit`, z = ~`Sharpe Ratio`,
+        type = 'scatter3d', mode = 'markers',
+        color = ~hclust_cluster,
+        marker = list(size = 5, colorscale = 'Viridis', opacity = 0.8)) %>%
+  layout(title = "3D Scatter Plot of Stock Data with Hierarchical Clusters",
+         scene = list(xaxis = list(title = 'Average Price'),
+                      yaxis = list(title = 'Max Profit'),
+                      zaxis = list(title = 'Sharpe Ratio')))
+
+```
+## KNN algorithm
+```{r}
+stock_name <- "AAPL"
+stock_index <- which(stocks_data$Ticker == stock_name)
+k <- 10  
+
+
+features <- stocks_data[, c('Max Profit', 'Average Price', 'Sharpe Ratio')]
+
+
+target_stock <- as.numeric(features[stock_index, ])
+
+
+distances <- sqrt(rowSums((features - target_stock)^2))
+
+
+nearest_neighbors <- order(distances)[2:(k + 1)]
+
+cat("Nearest neighbors for stock", stock_name, "are:", stocks_data$Ticker[nearest_neighbors], "\n")
+
+
+nearest_stocks <- stocks_data[nearest_neighbors, ]
+print(nearest_stocks)
+```
+
